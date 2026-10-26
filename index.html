@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Team Calendar — Team Scheduling &amp; Content Production</title>
+  <meta
+    name="description"
+    content="Team Calendar is a shared workspace for team schedules, class tests, availability, and content production tracking from script to published video."
+  />
+  <meta name="color-scheme" content="light dark" />
+  <meta name="theme-color" content="#1f5d3f" />
+
+  <!-- Future stylesheet -->
+  <link rel="stylesheet" href="./style.css" />
+</head>
+
+<body>
+  <noscript>
+    <p class="noscript-message">
+      Team Calendar requires JavaScript to display your shared schedule. Please enable JavaScript and reload the page.
+    </p>
+  </noscript>
+
+  <!-- ============================================================
+       A. AUTHENTICATION SCREEN
+       Visible by default. Future script.js hides this and reveals
+       #app-shell after a successful Firebase sign-in.
+       ============================================================ -->
+  <section id="auth-screen" class="auth-screen" aria-labelledby="auth-title">
+    <div class="auth-screen__panel">
+
+      <header class="auth-screen__header">
+        <div class="brand">
+          <span class="brand__logo" aria-hidden="true">
+            <svg class="icon" viewBox="0 0 24 24" width="24" height="24" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" focusable="false">
+              <rect x="3" y="5" width="18" height="16" rx="2.5" />
+              <path d="M3 10h18M8 3v4M16 3v4" />
+              <path d="M7.5 14h3v3h-3z" />
+            </svg>
+          </span>
+          <h1 class="brand__name" id="auth-title">Team Calendar</h1>
+        </div>
+
+        <p class="auth-screen__description">
+          A shared workspace for our team — schedules, availability, class tests,
+          and every stage of content production, from script to published video.
+        </p>
+      </header>
+
+      <form id="login-form" class="auth-form" novalidate>
+
+        <div class="form-field">
+          <label for="login-email">Email address</label>
+          <input
+            type="email"
+            id="login-email"
+            name="email"
+            autocomplete="username"
+            inputmode="email"
+            placeholder="you@example.com"
+            aria-describedby="login-email-hint"
+            required
+          />
+          <p class="form-hint" id="login-email-hint">
+            Use the email address linked to your team account.
+          </p>
+        </div>
+
+        <div class="form-field">
+          <label for="login-password">Password</label>
+          <div class="password-field">
+            <input
+              type="password"
+              id="login-password"
+              name="password"
+              autocomplete="current-password"
+              aria-describedby="login-password-hint"
+              required
+            />
+            <button
+              type="button"
+              id="toggle-password"
+              class="icon-button password-field__toggle"
+              aria-controls="login-password"
+              aria-pressed="false"
+              aria-label="Show password"
+            >
+              <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                   stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                   stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6z" />
+                <circle cx="12" cy="12" r="2.6" />
+              </svg>
+            </button>
+          </div>
+          <p class="form-hint" id="login-password-hint">
+            Contact your team lead if you need access.
+          </p>
+        </div>
+
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+
+        <button type="submit" id="login-submit" class="button button--primary button--block">
+          Sign in
+        </button>
+
+        <div id="login-loading" class="loading-indicator" role="status" aria-live="polite" hidden>
+          <span class="spinner" aria-hidden="true"></span>
+          <span class="loading-indicator__text">Signing in…</span>
+        </div>
+      </form>
+
+      <footer class="auth-screen__footer">
+        <p>Access is limited to team members. There is no public registration.</p>
+      </footer>
+    </div>
+  </section>
+
+  <!-- ============================================================
+       B. MAIN APPLICATION LAYOUT
+       Hidden until authentication is implemented.
+       ============================================================ -->
+  <div id="app-shell" class="app-shell" hidden>
+
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <!-- ---------- Sidebar (desktop) ---------- -->
+    <aside id="app-sidebar" class="sidebar" aria-label="Sidebar">
+      <div class="sidebar__brand">
+        <span class="brand__logo" aria-hidden="true">
+          <svg class="icon" viewBox="0 0 24 24" width="22" height="22" fill="none"
+               stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+               stroke-linejoin="round" focusable="false">
+            <rect x="3" y="5" width="18" height="16" rx="2.5" />
+            <path d="M3 10h18M8 3v4M16 3v4" />
+            <path d="M7.5 14h3v3h-3z" />
+          </svg>
+        </span>
+        <span class="brand__name brand__name--small">Team Calendar</span>
+      </div>
+
+      <nav id="sidebar-nav" class="sidebar__nav" aria-label="Main navigation">
+        <ul class="nav-list">
+          <li class="nav-list__item">
+            <a class="nav-link is-active" href="#dashboard" data-nav-target="dashboard" aria-current="page">
+              <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                   stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                   stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <rect x="3" y="3" width="7" height="7" rx="1.5" />
+                <rect x="14" y="3" width="7" height="7" rx="1.5" />
+                <rect x="3" y="14" width="7" height="7" rx="1.5" />
+                <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              </svg>
+              <span class="nav-link__label">Dashboard</span>
+            </a>
+          </li>
+
+          <li class="nav-list__item">
+            <a class="nav-link" href="#calendar" data-nav-target="calendar">
+              <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                   stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                   stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <rect x="3" y="5" width="18" height="16" rx="2.5" />
+                <path d="M3 10h18M8 3v4M16 3v4" />
+              </svg>
+              <span class="nav-link__label">Calendar</span>
+            </a>
+          </li>
+
+          <li class="nav-list__item">
+            <a class="nav-link" href="#pipeline" data-nav-target="pipeline">
+              <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                   stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                   stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <rect x="3" y="4" width="5" height="16" rx="1.5" />
+                <rect x="10" y="4" width="5" height="11" rx="1.5" />
+                <rect x="17" y="4" width="4" height="7" rx="1.5" />
+              </svg>
+              <span class="nav-link__label">Content Pipeline</span>
+            </a>
+          </li>
+
+          <li class="nav-list__item">
+            <a class="nav-link" href="#team" data-nav-target="team">
+              <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                   stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                   stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <circle cx="9" cy="8" r="3.2" />
+                <path d="M3 20a6 6 0 0 1 12 0" />
+                <path d="M16 5.5a3 3 0 0 1 0 5.8" />
+                <path d="M17.5 14.4A5.6 5.6 0 0 1 21 19.6" />
+              </svg>
+              <span class="nav-link__label">Team Members</span>
+            </a>
+          </li>
+
+          <li class="nav-list__item">
+            <a class="nav-link" href="#activity" data-nav-target="activity">
+              <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                   stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                   stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" />
+              </svg>
+              <span class="nav-link__label">Activity History</span>
+            </a>
+          </li>
+
+          <li class="nav-list__item">
+            <a class="nav-link" href="#settings" data-nav-target="settings">
+              <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                   stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                   stroke-linejoin="round" aria-hidden="true" focusable="false">
+                <circle cx="12" cy="12" r="3.2" />
+                <path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" />
+              </svg>
+              <span class="nav-link__label">Settings</span>
+            </a>
+          </li>
+        </ul>
+      </nav>
+
+      <div class="sidebar__footer">
+        <p class="sidebar__footer-text">Internal team workspace</p>
+      </div>
+    </aside>
+
+    <!-- ---------- Main column ---------- -->
+    <div class="app-column">
+
+      <!-- Top navigation bar -->
+      <header class="topbar">
+        <button
+          type="button"
+          id="sidebar-toggle"
+          class="icon-button topbar__menu"
+          aria-controls="app-sidebar"
+          aria-expanded="false"
+          aria-label="Open navigation menu"
+        >
+          <svg class="icon" viewBox="0 0 24 24" width="22" height="22" fill="none"
+               stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M4 7h16M4 12h16M4 17h16" />
+          </svg>
+        </button>
+
+        <h1 id="page-title" class="topbar__title">Dashboard</h1>
+
+        <div class="topbar__actions">
+          <button
+            type="button"
+            id="notification-button"
+            class="icon-button"
+            aria-label="Notifications"
+            aria-haspopup="true"
+            aria-expanded="false"
+          >
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M18 9a6 6 0 1 0-12 0c0 5.5-2 7-2 7h16s-2-1.5-2-7" />
+              <path d="M10.3 20a2 2 0 0 0 3.4 0" />
+            </svg>
+          </button>
+
+          <button
+            type="button"
+            id="theme-toggle"
+            class="icon-button"
+            aria-label="Switch to dark theme"
+            aria-pressed="false"
+          >
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M19.1 4.9l-1.6 1.6M6.5 17.5l-1.6 1.6" />
+            </svg>
+          </button>
+
+          <div class="user-chip">
+            <span id="user-avatar" class="avatar" aria-hidden="true">—</span>
+            <span id="user-display-name" class="user-chip__name">—</span>
+          </div>
+
+          <button type="button" id="logout-button" class="button button--ghost">
+            <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <path d="M15 12H4M8 8l-4 4 4 4" />
+              <path d="M12 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6" />
+            </svg>
+            <span>Sign out</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- ---------- Main content ---------- -->
+      <main id="main-content" class="main-content" tabindex="-1">
+
+        <!-- ============================================================
+             DASHBOARD
+             ============================================================ -->
+        <section id="dashboard" class="app-section" aria-labelledby="dashboard-heading">
+          <div class="section-header">
+            <h2 id="dashboard-heading">Overview</h2>
+            <p class="section-header__subtitle">
+              A snapshot of today's schedule, team availability, and production status.
+            </p>
+          </div>
+
+          <div class="card-grid">
+
+            <article class="card" aria-labelledby="dashboard-today-events-heading">
+              <h3 id="dashboard-today-events-heading" class="card__title">Today's events</h3>
+              <div class="card__body" id="dashboard-today-events">
+                <p class="empty-state">No events scheduled for today.</p>
+              </div>
+            </article>
+
+            <article class="card" aria-labelledby="dashboard-upcoming-tests-heading">
+              <h3 id="dashboard-upcoming-tests-heading" class="card__title">Upcoming class tests</h3>
+              <div class="card__body" id="dashboard-upcoming-tests">
+                <p class="empty-state">No class tests scheduled.</p>
+              </div>
+            </article>
+
+            <article class="card" aria-labelledby="dashboard-team-availability-heading">
+              <h3 id="dashboard-team-availability-heading" class="card__title">Team availability</h3>
+              <div class="card__body" id="dashboard-team-availability">
+                <p class="empty-state">Availability has not been loaded yet.</p>
+              </div>
+            </article>
+
+            <article class="card" aria-labelledby="dashboard-active-projects-heading">
+              <h3 id="dashboard-active-projects-heading" class="card__title">Active content projects</h3>
+              <div class="card__body" id="dashboard-active-projects">
+                <p class="empty-state">No active projects.</p>
+              </div>
+            </article>
+
+            <article class="card" aria-labelledby="dashboard-pending-tasks-heading">
+              <h3 id="dashboard-pending-tasks-heading" class="card__title">Pending tasks</h3>
+              <div class="card__body" id="dashboard-pending-tasks">
+                <p class="empty-state">No pending tasks.</p>
+              </div>
+            </article>
+
+            <article class="card" aria-labelledby="dashboard-progress-heading">
+              <h3 id="dashboard-progress-heading" class="card__title">Overall production progress</h3>
+              <div class="card__body">
+                <div
+                  class="progress"
+                  id="dashboard-progress"
+                  role="progressbar"
+                  aria-labelledby="dashboard-progress-heading"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                >
+                  <div class="progress__bar" id="dashboard-progress-bar"></div>
+                </div>
+                <p class="progress__value">
+                  <span id="dashboard-progress-value">0</span>% complete
+                </p>
+              </div>
+            </article>
+
+          </div>
+        </section>
+
+        <!-- ============================================================
+             CALENDAR
+             ============================================================ -->
+        <section id="calendar" class="app-section" aria-labelledby="calendar-heading" hidden>
+          <div class="section-header">
+            <h2 id="calendar-heading">Calendar</h2>
+            <p class="section-header__subtitle">
+              Shared schedule for events, classes, availability, and production tasks.
+            </p>
+          </div>
+
+          <div class="calendar-toolbar">
+            <div class="calendar-toolbar__group">
+              <button type="button" id="calendar-prev" class="icon-button" aria-label="Previous period">
+                <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                     stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M15 6l-6 6 6 6" />
+                </svg>
+              </button>
+
+              <button type="button" id="calendar-today" class="button button--ghost">Today</button>
+
+              <button type="button" id="calendar-next" class="icon-button" aria-label="Next period">
+                <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                     stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M9 6l6 6-6 6" />
+                </svg>
+              </button>
+
+              <h3 id="calendar-title" class="calendar-toolbar__title" aria-live="polite">
+                Month Year
+              </h3>
+            </div>
+
+            <div class="calendar-toolbar__group">
+              <div class="segmented" role="group" aria-label="Calendar view">
+                <button type="button" id="view-month" class="segmented__button is-active" aria-pressed="true">
+                  Month
+                </button>
+                <button type="button" id="view-week" class="segmented__button" aria-pressed="false">
+                  Week
+                </button>
+                <button type="button" id="view-day" class="segmented__button" aria-pressed="false">
+                  Day
+                </button>
+              </div>
+
+              <button type="button" id="add-event-button" class="button button--primary">
+                <svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none"
+                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true" focusable="false">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+                <span>Add event</span>
+              </button>
+            </div>
+          </div>
+
+          <div class="calendar-layout">
+
+            <div class="calendar-panel">
+              <div id="calendar-weekdays" class="calendar-weekdays" aria-hidden="true">
+                <span class="calendar-weekdays__cell">Mon</span>
+                <span class="calendar-weekdays__cell">Tue</span>
+                <span class="calendar-weekdays__cell">Wed</span>
+                <span class="calendar-weekdays__cell">Thu</span>
+                <span class="calendar-weekdays__cell">Fri</span>
+                <span class="calendar-weekdays__cell">Sat</span>
+                <span class="calendar-weekdays__cell">Sun</span>
+              </div>
+
+              <!-- JS renders day cells (role="row" / role="gridcell") inside this container. -->
+              <div
+                id="calendar-grid"
+                class="calendar-grid"
+                role="grid"
+                aria-labelledby="calendar-title"
+              ></div>
+
+              <div id="calendar-loading" class="loading-indicator" role="status" aria-live="polite" hidden>
+                <span class="spinner" aria-hidden="true"></span>
+                <span class="loading-indicator__text">Loading calendar…</span>
+              </div>
+
+              <p id="calendar-error" class="form-error" role="alert" hidden></p>
+            </div>
+
+            <aside id="selected-date-panel" class="calendar-details" aria-labelledby="selected-date-heading">
+              <h3 id="selected-date-heading" class="calendar-details__title">Selected date</h3>
+              <p id="selected-date-summary" class="calendar-details__summary">
+                Select a date to see its events.
+              </p>
+
+              <ul id="selected-date-event-list" class="event-list"></ul>
+
+              <p id="selected-date-empty" class="empty-state">No events for this date.</p>
+            </aside>
+
+          </div>
+        </section>
+
+        <!-- ============================================================
+             CONTENT PRODUCTION PIPELINE
+             ============================================================ -->
+        <section id="pipeline" class="app-section" aria-labelledby="pipeline-heading" hidden>
+          <div class="section-header">
+            <h2 id="pipeline-heading">Content Pipeline</h2>
+            <p class="section-header__subtitle">
+              Projects move left to right as production advances.
+            </p>
+          </div>
+
+          <div class="pipeline" id="pipeline-board">
+
+            <section class="pipeline__stage" data-stage="script-pending" aria-labelledby="stage-script-pending-heading">
+              <header class="pipeline__stage-header">
+                <h3 id="stage-script-pending-heading" class="pipeline__stage-title">Script Pending</h3>
+                <span class="pipeline__count" id="stage-script-pending-count" aria-label="0 projects">0</span>
+              </header>
+              <div class="pipeline__cards" id="stage-script-pending" data-stage-cards="script-pending">
+                <p class="empty-state">No projects in this stage.</p>
+              </div>
+            </section>
+
+            <section class="pipeline__stage" data-stage="script-uploaded" aria-labelledby="stage-script-uploaded-heading">
+              <header class="pipeline__stage-header">
+                <h3 id="stage-script-uploaded-heading" class="pipeline__stage-title">Script Uploaded</h3>
+                <span class="pipeline__count" id="stage-script-uploaded-count" aria-label="0 projects">0</span>
+              </header>
+              <div class="pipeline__cards" id="stage-script-uploaded" data-stage-cards="script-uploaded">
+                <p class="empty-state">No projects in this stage.</p>
+              </div>
+            </section>
+
+            <section class="pipeline__stage" data-stage="voice-pending" aria-labelledby="stage-voice-pending-heading">
+              <header class="pipeline__stage-header">
+                <h3 id="stage-voice-pending-heading" class="pipeline__stage-title">Voice Pending</h3>
+                <span class="pipeline__count" id="stage-voice-pending-count" aria-label="0 projects">0</span>
+              </header>
+              <div class="pipeline__cards" id="stage-voice-pending" data-stage-cards="voice-pending">
+                <p class="empty-state">No projects in this stage.</p>
+              </div>
+            </section>
+
+            <section class="pipeline__stage" data-stage="voice-uploaded" aria-labelledby="stage-voice-uploaded-heading">
+              <header class="pipeline__stage-header">
+                <h3 id="stage-voice-uploaded-heading" class="pipeline__stage-title">Voice Uploaded</h3>
+                <span class="pipeline__count" id="stage-voice-uploaded-count" aria-label="0 projects">0</span>
+              </header>
+              <div class="pipeline__cards" id="stage-voice-uploaded" data-stage-cards="voice-uploaded">
+                <p class="empty-state">No projects in this stage.</p>
+              </div>
+            </section>
+
+            <section class="pipeline__stage" data-stage="video-editing" aria-labelledby="stage-video-editing-heading">
+              <header class="pipeline__stage-header">
+                <h3 id="stage-video-editing-heading" class="pipeline__stage-title">Video Editing</h3>
+                <span class="pipeline__count" id="stage-video-editing-count" aria-label="0 projects">0</span>
+              </header>
+              <div class="pipeline__cards" id="stage-video-editing" data-stage-cards="video-editing">
+                <p class="empty-state">No projects in this stage.</p>
+              </div>
+            </section>
+
+            <section class="pipeline__stage" data-stage="video-completed" aria-labelledby="stage-video-completed-heading">
+              <header class="pipeline__stage-header">
+                <h3 id="stage-video-completed-heading" class="pipeline__stage-title">Video Completed</h3>
+                <span class="pipeline__count" id="stage-video-completed-count" aria-label="0 projects">0</span>
+              </header>
+              <div class="pipeline__cards" id="stage-video-completed" data-stage-cards="video-completed">
+                <p class="empty-state">No projects in this stage.</p>
+              </div>
+            </section>
+
+            <section class="pipeline__stage" data-stage="video-posted" aria-labelledby="stage-video-posted-heading">
+              <header class="pipeline__stage-header">
+                <h3 id="stage-video-posted-heading" class="pipeline__stage-title">Video Posted</h3>
+                <span class="pipeline__count" id="stage-video-posted-count" aria-label="0 projects">0</span>
+              </header>
+              <div class="pipeline__cards" id="stage-video-posted" data-stage-cards="video-posted">
+                <p class="empty-state">No projects in this stage.</p>
+              </div>
+            </section>
+
+          </div>
+        </section>
+
+        <!-- ============================================================
+             TEAM MEMBERS
+             ============================================================ -->
+        <section id="team" class="app-section" aria-labelledby="team-heading" hidden>
+          <div class="section-header">
+            <h2 id="team-heading">Team Members</h2>
+            <p class="section-header__subtitle">
+              Three member profiles. Details are loaded from shared data.
+            </p>
+          </div>
+
+          <div id="team-members-grid" class="team-grid">
+
+            <article class="member-card" data-member-slot="1" aria-labelledby="member-1-name">
+              <span class="avatar avatar--lg" data-member-avatar aria-hidden="true">—</span>
+              <h3 id="member-1-name" class="member-card__name" data-member-name>Member name</h3>
+              <p class="member-card__role" data-member-role>Role</p>
+              <p class="member-card__meta">
+                <span class="color-dot" data-member-color aria-hidden="true"></span>
+                <span data-member-color-label>Assigned color</span>
+              </p>
+              <p class="member-card__meta">
+                Availability:
+                <span data-member-availability>—</span>
+              </p>
+            </article>
+
+            <article class="member-card" data-member-slot="2" aria-labelledby="member-2-name">
+              <span class="avatar avatar--lg" data-member-avatar aria-hidden="true">—</span>
+              <h3 id="member-2-name" class="member-card__name" data-member-name>Member name</h3>
+              <p class="member-card__role" data-member-role>Role</p>
+              <p class="member-card__meta">
+                <span class="color-dot" data-member-color aria-hidden="true"></span>
+                <span data-member-color-label>Assigned color</span>
+              </p>
+              <p class="member-card__meta">
+                Availability:
+                <span data-member-availability>—</span>
+              </p>
+            </article>
+
+            <article class="member-card" data-member-slot="3" aria-labelledby="member-3-name">
+              <span class="avatar avatar--lg" data-member-avatar aria-hidden="true">—</span>
+              <h3 id="member-3-name" class="member-card__name" data-member-name>Member name</h3>
+              <p class="member-card__role" data-member-role>Role</p>
+              <p class="member-card__meta">
+                <span class="color-dot" data-member-color aria-hidden="true"></span>
+                <span data-member-color-label>Assigned color</span>
+              </p>
+              <p class="member-card__meta">
+                Availability:
+                <span data-member-availability>—</span>
+              </p>
+            </article>
+
+          </div>
+        </section>
+
+        <!-- ============================================================
+             ACTIVITY HISTORY
+             ============================================================ -->
+        <section id="activity" class="app-section" aria-labelledby="activity-heading" hidden>
+          <div class="section-header">
+            <h2 id="activity-heading">Activity History</h2>
+            <p class="section-header__subtitle">The most recent team actions appear here.</p>
+          </div>
+
+          <ul id="activity-list" class="activity-list"></ul>
+
+          <p id="activity-empty" class="empty-state">No activity recorded yet.</p>
+        </section>
+
+        <!-- ============================================================
+             SETTINGS
+             ============================================================ -->
+        <section id="settings" class="app-section" aria-labelledby="settings-heading" hidden>
+          <div class="section-header">
+            <h2 id="settings-heading">Settings</h2>
+            <p class="section-header__subtitle">
+              Controls below are placeholders and are not yet connected to saved data.
+            </p>
+          </div>
+
+          <form id="settings-form" class="settings-form" novalidate>
+
+            <fieldset class="settings-group">
+              <legend class="settings-group__legend">Theme preference</legend>
+              <div class="radio-group">
+                <label class="radio-option" for="theme-preference-light">
+                  <input type="radio" id="theme-preference-light" name="theme-preference" value="light" checked />
+                  <span>Light</span>
+                </label>
+                <label class="radio-option" for="theme-preference-dark">
+                  <input type="radio" id="theme-preference-dark" name="theme-preference" value="dark" />
+                  <span>Dark</span>
+                </label>
+                <label class="radio-option" for="theme-preference-system">
+                  <input type="radio" id="theme-preference-system" name="theme-preference" value="system" />
+                  <span>System default</span>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="settings-group">
+              <legend class="settings-group__legend">Calendar display preferences</legend>
+
+              <div class="form-field">
+                <label for="settings-week-start">Week starts on</label>
+                <select id="settings-week-start" name="week-start">
+                  <option value="monday" selected>Monday</option>
+                  <option value="sunday">Sunday</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="settings-default-view">Default calendar view</label>
+                <select id="settings-default-view" name="default-view">
+                  <option value="month" selected>Month</option>
+                  <option value="week">Week</option>
+                  <option value="day">Day</option>
+                </select>
+              </div>
+
+              <label class="checkbox-option" for="settings-show-weekends">
+                <input type="checkbox" id="settings-show-weekends" name="show-weekends" checked />
+                <span>Show weekends in the calendar grid</span>
+              </label>
+            </fieldset>
+
+            <fieldset class="settings-group">
+              <legend class="settings-group__legend">Account information</legend>
+
+              <div class="form-field">
+                <label for="settings-display-name">Display name</label>
+                <input type="text" id="settings-display-name" name="display-name" readonly />
+              </div>
+
+              <div class="form-field">
+                <label for="settings-email">Email address</label>
+                <input type="email" id="settings-email" name="email" readonly />
+              </div>
+
+              <p class="form-hint">Account details are read-only and come from your sign-in account.</p>
+            </fieldset>
+
+            <fieldset class="settings-group">
+              <legend class="settings-group__legend">Notification preferences</legend>
+
+              <label class="checkbox-option" for="notify-events">
+                <input type="checkbox" id="notify-events" name="notify-events" />
+                <span>Remind me about upcoming events</span>
+              </label>
+
+              <label class="checkbox-option" for="notify-tests">
+                <input type="checkbox" id="notify-tests" name="notify-tests" />
+                <span>Remind me about class tests</span>
+              </label>
+
+              <label class="checkbox-option" for="notify-pipeline">
+                <input type="checkbox" id="notify-pipeline" name="notify-pipeline" />
+                <span>Notify me when a project changes stage</span>
+              </label>
+            </fieldset>
+
+            <div class="settings-form__actions">
+              <button type="submit" id="settings-save" class="button button--primary">Save settings</button>
+            </div>
+
+          </form>
+        </section>
+
+        <footer class="app-footer">
+          <p>Team Calendar — internal team workspace.</p>
+          <p id="data-status" class="app-footer__status" role="status" aria-live="polite">Not connected</p>
+        </footer>
+
+      </main>
+    </div>
+
+    <!-- ---------- Mobile navigation ---------- -->
+    <nav id="mobile-nav" class="mobile-nav" aria-label="Mobile navigation">
+      <ul class="mobile-nav__list">
+        <li class="mobile-nav__item">
+          <a class="mobile-nav__link is-active" href="#dashboard" data-nav-target="dashboard" aria-current="page">
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+            <span class="mobile-nav__label">Dashboard</span>
+          </a>
+        </li>
+
+        <li class="mobile-nav__item">
+          <a class="mobile-nav__link" href="#calendar" data-nav-target="calendar">
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <rect x="3" y="5" width="18" height="16" rx="2.5" />
+              <path d="M3 10h18M8 3v4M16 3v4" />
+            </svg>
+            <span class="mobile-nav__label">Calendar</span>
+          </a>
+        </li>
+
+        <li class="mobile-nav__item">
+          <a class="mobile-nav__link" href="#pipeline" data-nav-target="pipeline">
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <rect x="3" y="4" width="5" height="16" rx="1.5" />
+              <rect x="10" y="4" width="5" height="11" rx="1.5" />
+              <rect x="17" y="4" width="4" height="7" rx="1.5" />
+            </svg>
+            <span class="mobile-nav__label">Pipeline</span>
+          </a>
+        </li>
+
+        <li class="mobile-nav__item">
+          <a class="mobile-nav__link" href="#team" data-nav-target="team">
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <circle cx="9" cy="8" r="3.2" />
+              <path d="M3 20a6 6 0 0 1 12 0" />
+              <path d="M16 5.5a3 3 0 0 1 0 5.8" />
+              <path d="M17.5 14.4A5.6 5.6 0 0 1 21 19.6" />
+            </svg>
+            <span class="mobile-nav__label">Team</span>
+          </a>
+        </li>
+
+        <li class="mobile-nav__item">
+          <a class="mobile-nav__link" href="#activity" data-nav-target="activity">
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 7v5l3 2" />
+            </svg>
+            <span class="mobile-nav__label">Activity</span>
+          </a>
+        </li>
+
+        <li class="mobile-nav__item">
+          <a class="mobile-nav__link" href="#settings" data-nav-target="settings">
+            <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+                 stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="3.2" />
+              <path d="M12 3v2.2M12 18.8V21M3 12h2.2M18.8 12H21M5.6 5.6l1.6 1.6M16.8 16.8l1.6 1.6M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6" />
+            </svg>
+            <span class="mobile-nav__label">Settings</span>
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+  </div>
+
+  <!-- ============================================================
+       D. EVENT CREATION / EDITING DIALOG
+       Opened and controlled by script.js.
+       ============================================================ -->
+  <dialog id="event-dialog" class="dialog" aria-labelledby="event-dialog-title">
+
+    <form id="event-form" class="dialog__form" method="dialog" novalidate>
+
+      <header class="dialog__header">
+        <h2 id="event-dialog-title" class="dialog__title">New event</h2>
+        <button type="button" id="event-dialog-close" class="icon-button" aria-label="Close dialog">
+          <svg class="icon" viewBox="0 0 24 24" width="20" height="20" fill="none"
+               stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+               stroke-linejoin="round" aria-hidden="true" focusable="false">
+            <path d="M6 6l12 12M18 6L6 18" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="dialog__body">
+
+        <input type="hidden" id="event-id" name="event-id" value="" />
+
+        <div class="form-field">
+          <label for="event-title">Event title</label>
+          <input type="text" id="event-title" name="title" maxlength="120" required />
+        </div>
+
+        <div class="form-field">
+          <label for="event-type">Event type</label>
+          <select id="event-type" name="type" required>
+            <option value="">Select a type</option>
+            <option value="class-test">Class Test</option>
+            <option value="class">Class</option>
+            <option value="busy">Busy</option>
+            <option value="free">Free</option>
+            <option value="content-task">Content Task</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="event-start-date">Start date</label>
+            <input type="date" id="event-start-date" name="start-date" required />
+          </div>
+
+          <div class="form-field">
+            <label for="event-start-time">Start time</label>
+            <input type="time" id="event-start-time" name="start-time" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-field">
+            <label for="event-end-date">End date</label>
+            <input type="date" id="event-end-date" name="end-date" required />
+          </div>
+
+          <div class="form-field">
+            <label for="event-end-time">End time</label>
+            <input type="time" id="event-end-time" name="end-time" required />
+          </div>
+        </div>
+
+        <div class="form-field">
+          <label for="event-description">Description or notes</label>
+          <textarea id="event-description" name="description" rows="3" maxlength="1000"></textarea>
+        </div>
+
+        <div class="form-field">
+          <label for="event-link">External link <span class="form-hint form-hint--inline">(optional)</span></label>
+          <input
+            type="url"
+            id="event-link"
+            name="link"
+            placeholder="https://drive.google.com/…"
+            inputmode="url"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="event-assignee">Assigned team member</label>
+          <select id="event-assignee" name="assignee">
+            <option value="">Unassigned</option>
+            <!-- script.js populates member options here -->
+          </select>
+        </div>
+
+        <p id="event-form-error" class="form-error" role="alert" hidden></p>
+      </div>
+
+      <footer class="dialog__footer">
+        <button type="button" id="event-delete" class="button button--danger" hidden>
+          Delete event
+        </button>
+
+        <div class="dialog__footer-actions">
+          <button type="button" id="event-cancel" class="button button--ghost">Cancel</button>
+          <button type="submit" id="event-save" class="button button--primary">Save event</button>
+        </div>
+      </footer>
+
+    </form>
+  </dialog>
+
+  <!-- Future application logic -->
+  <script type="module" src="./script.js"></script>
+</body>
+</html>
