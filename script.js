@@ -1,56 +1,63 @@
 // ============================================================
 // TEAM CALENDAR — SCRIPT.JS
 // Firebase Authentication + Cloud Firestore integration.
-// See index.html for markup. See style.css for styling.
 //
 // SECURITY NOTICE
 // ---------------
-// Client-side permission checks below exist for user experience only.
+// Client-side permission checks in this file exist for UX only.
 // Real authorization MUST be enforced by Firestore Security Rules.
-// This file contains no private credentials and uses only the
-// public Firebase web config.
+// This file contains no private credentials; only the public
+// Firebase web config (which is not a secret).
 // ============================================================
 
 
 // ============================================================
-// 1. FIREBASE CONFIGURATION (PLACEHOLDER)
+// 1. FIREBASE CONFIGURATION
 // ============================================================
-// Replace the placeholder values below with the web app config
-// from: Firebase Console → Project Settings → Your apps.
+// This app is wired for the Firebase project:
+//     team-calendar-c68c3
 //
-// These values are NOT secret. Do NOT put service-account keys,
-// Admin SDK credentials, or passwords here.
+// Fill in the remaining values from:
+//   Firebase Console → Project Settings → General → Your apps
 //
-// All Firestore access must be protected by Security Rules.
+// Required: apiKey, authDomain, projectId, appId
+// Optional for this app: storageBucket, messagingSenderId
+//   (only needed if you add Storage or Cloud Messaging later)
+//
+// These values are PUBLIC by design. Do NOT put service-account
+// keys, Admin SDK credentials, or passwords in this file.
+//
+// Firestore Security Rules are a separate, mandatory step — the
+// web config is NOT a security boundary.
 
 const firebaseConfig = {
-  apiKey:            "REPLACE_WITH_API_KEY",
-  authDomain:        "REPLACE_WITH_AUTH_DOMAIN",
-  projectId:         "REPLACE_WITH_PROJECT_ID",
-  storageBucket:     "REPLACE_WITH_STORAGE_BUCKET",
-  messagingSenderId: "REPLACE_WITH_MESSAGING_SENDER_ID",
-  appId:             "REPLACE_WITH_APP_ID",
-};
+    apiKey: "AIzaSyAzEhzpU9UlUdXSYqtro6w7HTlktunmBLw",
+    authDomain: "team-calendar-c68c3.firebaseapp.com",
+    projectId: "team-calendar-c68c3",
+    storageBucket: "team-calendar-c68c3.firebasestorage.app",
+    messagingSenderId: "6152996174",
+    appId: "1:6152996174:web:c3a1efb7d86c9b488d8a1f",
+    measurementId: "G-EQ7XBK2RV1"
+  };
 
-function isFirebaseConfigured(config) {
-  if (!config || typeof config !== "object") return false;
+function getMissingConfigKeys(config) {
   const required = ["apiKey", "authDomain", "projectId", "appId"];
-  return required.every(
+  return required.filter(
     (key) =>
-      typeof config[key] === "string" &&
-      config[key].length > 0 &&
-      !config[key].startsWith("REPLACE_WITH")
+      typeof config[key] !== "string" ||
+      config[key].length === 0 ||
+      config[key].startsWith("REPLACE_WITH")
   );
 }
 
-const CONFIG_READY = isFirebaseConfigured(firebaseConfig);
+const CONFIG_READY = getMissingConfigKeys(firebaseConfig).length === 0;
 
 
 // ============================================================
-// 2. FIREBASE SDK IMPORTS (ES MODULES FROM CDN)
+// 2. FIREBASE SDK IMPORTS (ES MODULES, v13.1.0)
 // ============================================================
 import { initializeApp } from
-  "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+  "https://www.gstatic.com/firebasejs/13.1.0/firebase-app.js";
 
 import {
   getAuth,
@@ -59,7 +66,7 @@ import {
   signOut,
   setPersistence,
   browserLocalPersistence,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js";
 
 import {
   getFirestore,
@@ -75,7 +82,7 @@ import {
   deleteDoc,
   serverTimestamp,
   Timestamp,
-} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+} from "https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js";
 
 
 // ============================================================
@@ -84,22 +91,22 @@ import {
 const $ = (id) => document.getElementById(id);
 
 const dom = {
-  // Auth screen
-  authScreen:   $("auth-screen"),
-  loginForm:    $("login-form"),
-  loginEmail:   $("login-email"),
-  loginPassword:$("login-password"),
+  // Auth
+  authScreen:     $("auth-screen"),
+  loginForm:      $("login-form"),
+  loginEmail:     $("login-email"),
+  loginPassword:  $("login-password"),
   togglePassword: $("toggle-password"),
-  loginError:   $("login-error"),
-  loginSubmit:  $("login-submit"),
-  loginLoading: $("login-loading"),
+  loginError:     $("login-error"),
+  loginSubmit:    $("login-submit"),
+  loginLoading:   $("login-loading"),
 
   // App shell
-  appShell:     $("app-shell"),
-  sidebar:      $("app-sidebar"),
-  sidebarToggle:$("sidebar-toggle"),
-  mobileNav:    $("mobile-nav"),
-  navLinks:     document.querySelectorAll(
+  appShell:      $("app-shell"),
+  sidebar:       $("app-sidebar"),
+  sidebarToggle: $("sidebar-toggle"),
+  mobileNav:     $("mobile-nav"),
+  navLinks: document.querySelectorAll(
     ".nav-link[data-nav-target], .mobile-nav__link[data-nav-target]"
   ),
 
@@ -111,7 +118,6 @@ const dom = {
   userDisplayName: $("user-display-name"),
   logoutBtn:       $("logout-button"),
 
-  // Sections
   sections: document.querySelectorAll(".app-section"),
 
   // Dashboard
@@ -141,29 +147,29 @@ const dom = {
   selectedDateEmpty:     $("selected-date-empty"),
 
   // Event dialog
-  eventDialog:     $("event-dialog"),
-  eventForm:       $("event-form"),
-  eventDialogTitle:$("event-dialog-title"),
-  eventDialogClose:$("event-dialog-close"),
-  eventId:         $("event-id"),
-  eventTitle:      $("event-title"),
-  eventType:       $("event-type"),
-  eventStartDate:  $("event-start-date"),
-  eventStartTime:  $("event-start-time"),
-  eventEndDate:    $("event-end-date"),
-  eventEndTime:    $("event-end-time"),
-  eventDescription:$("event-description"),
-  eventLink:       $("event-link"),
-  eventAssignee:   $("event-assignee"),
-  eventFormError:  $("event-form-error"),
-  eventDelete:     $("event-delete"),
-  eventCancel:     $("event-cancel"),
-  eventSave:       $("event-save"),
+  eventDialog:      $("event-dialog"),
+  eventForm:        $("event-form"),
+  eventDialogTitle: $("event-dialog-title"),
+  eventDialogClose: $("event-dialog-close"),
+  eventId:          $("event-id"),
+  eventTitle:       $("event-title"),
+  eventType:        $("event-type"),
+  eventStartDate:   $("event-start-date"),
+  eventStartTime:   $("event-start-time"),
+  eventEndDate:     $("event-end-date"),
+  eventEndTime:     $("event-end-time"),
+  eventDescription: $("event-description"),
+  eventLink:        $("event-link"),
+  eventAssignee:    $("event-assignee"),
+  eventFormError:   $("event-form-error"),
+  eventDelete:      $("event-delete"),
+  eventCancel:      $("event-cancel"),
+  eventSave:        $("event-save"),
 
-  // Pipeline stage containers
+  // Pipeline
   pipelineStages: document.querySelectorAll("[data-stage-cards]"),
 
-  // Team member cards
+  // Team
   memberCards: document.querySelectorAll(".member-card[data-member-slot]"),
 
   // Activity
@@ -171,18 +177,17 @@ const dom = {
   activityEmpty: $("activity-empty"),
 
   // Settings
-  settingsForm:        $("settings-form"),
-  settingsThemeLight:  $("theme-preference-light"),
-  settingsThemeDark:   $("theme-preference-dark"),
-  settingsThemeSystem: $("theme-preference-system"),
-  settingsWeekStart:   $("settings-week-start"),
-  settingsDefaultView: $("settings-default-view"),
-  settingsShowWeekends:$("settings-show-weekends"),
-  settingsDisplayName: $("settings-display-name"),
-  settingsEmail:       $("settings-email"),
-  settingsSave:        $("settings-save"),
+  settingsForm:         $("settings-form"),
+  settingsThemeLight:   $("theme-preference-light"),
+  settingsThemeDark:    $("theme-preference-dark"),
+  settingsThemeSystem:  $("theme-preference-system"),
+  settingsWeekStart:    $("settings-week-start"),
+  settingsDefaultView:  $("settings-default-view"),
+  settingsShowWeekends: $("settings-show-weekends"),
+  settingsDisplayName:  $("settings-display-name"),
+  settingsEmail:        $("settings-email"),
+  settingsSave:         $("settings-save"),
 
-  // Footer
   dataStatus: $("data-status"),
 };
 
@@ -231,11 +236,6 @@ const pad2 = (n) => String(n).padStart(2, "0");
 
 const toLocalDateKey = (d) =>
   `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-
-const fromLocalDateKey = (key) => {
-  const [y, m, d] = key.split("-").map(Number);
-  return new Date(y, m - 1, d);
-};
 
 const tsToDate = (value) => {
   if (!value) return null;
@@ -367,14 +367,14 @@ function setLoginLoading(isLoading) {
 
 function authErrorMessage(code) {
   const map = {
-    "auth/invalid-email":         "That email address looks invalid.",
-    "auth/user-disabled":         "This account has been disabled.",
-    "auth/user-not-found":        "No account found for that email.",
-    "auth/wrong-password":        "Incorrect password.",
-    "auth/invalid-credential":    "Incorrect email or password.",
-    "auth/too-many-requests":     "Too many attempts. Try again later.",
-    "auth/network-request-failed":"Network error. Check your connection.",
-    "auth/missing-password":      "Please enter a password.",
+    "auth/invalid-email":          "That email address looks invalid.",
+    "auth/user-disabled":          "This account has been disabled.",
+    "auth/user-not-found":         "No account found for that email.",
+    "auth/wrong-password":         "Incorrect password.",
+    "auth/invalid-credential":     "Incorrect email or password.",
+    "auth/too-many-requests":      "Too many attempts. Try again later.",
+    "auth/network-request-failed": "Network error. Check your connection.",
+    "auth/missing-password":       "Please enter a password.",
   };
   return map[code] || "Unable to sign in. Please try again.";
 }
@@ -385,7 +385,8 @@ async function handleSignIn(e) {
 
   if (!CONFIG_READY) {
     showLoginError(
-      "Firebase is not configured yet. See the setup notes at the top of script.js."
+      "Firebase is not configured yet. Edit script.js → firebaseConfig " +
+      "with the values from your Firebase Console."
     );
     return;
   }
@@ -402,7 +403,7 @@ async function handleSignIn(e) {
 
   try {
     await signInWithEmailAndPassword(state.auth, email, password);
-    // onAuthStateChanged handles UI switch.
+    // onAuthStateChanged handles the UI switch.
   } catch (err) {
     showLoginError(authErrorMessage(err?.code));
   } finally {
@@ -607,9 +608,7 @@ function buildMonthMatrix(anchor, weekStart) {
 }
 
 function buildWeekMatrix(anchor, weekStart) {
-  const anchorIdx = weekStart === 0
-    ? anchor.getDay()
-    : isoWeekday(anchor);
+  const anchorIdx = weekStart === 0 ? anchor.getDay() : isoWeekday(anchor);
   const weekStartDate = addDays(startOfDay(anchor), -anchorIdx);
   return Array.from({ length: 7 }, (_, i) => addDays(weekStartDate, i));
 }
@@ -651,12 +650,12 @@ function buildEventChip(event) {
   const chip = document.createElement("div");
   chip.className = `event-chip ${eventTypeClass(event.type)}`;
 
-  const past      = isPastEvent(event);
-  const protected_ = PROTECTED_STATUSES.includes(event.productionStatus);
+  const past       = isPastEvent(event);
+  const isProtected = PROTECTED_STATUSES.includes(event.productionStatus);
 
-  if (past && !protected_) chip.classList.add("is-past");
+  if (past && !isProtected) chip.classList.add("is-past");
 
-  if (protected_) {
+  if (isProtected) {
     const statusClass = productionStatusClass(event.productionStatus);
     if (statusClass) chip.classList.add(statusClass);
   }
@@ -682,10 +681,10 @@ function renderDayCell(day, anchor, selectedDate) {
   const isOutside =
     day.getMonth() !== anchor.getMonth() ||
     day.getFullYear() !== anchor.getFullYear();
-  if (isOutside)                            cell.classList.add("is-outside");
-  if (isSameDay(day, new Date()))           cell.classList.add("is-today");
-  if (isSameDay(day, selectedDate))         cell.classList.add("is-selected");
-  if (isPastDay(day))                       cell.classList.add("is-past");
+  if (isOutside)                     cell.classList.add("is-outside");
+  if (isSameDay(day, new Date()))    cell.classList.add("is-today");
+  if (isSameDay(day, selectedDate))  cell.classList.add("is-selected");
+  if (isPastDay(day))                cell.classList.add("is-past");
 
   const dayEvents = eventsForDay(day);
   if (dayEvents.length > 0) cell.classList.add("has-events");
@@ -848,6 +847,14 @@ function hideCalendarError() {
   if (dom.calendarError) dom.calendarError.hidden = true;
 }
 
+function showCalendarLoading() {
+  if (dom.calendarLoading) dom.calendarLoading.hidden = false;
+}
+
+function hideCalendarLoading() {
+  if (dom.calendarLoading) dom.calendarLoading.hidden = true;
+}
+
 function indexEventsByDate() {
   const map = new Map();
   state.events.forEach((ev) => {
@@ -868,7 +875,7 @@ function indexEventsByDate() {
 
 
 // ============================================================
-// 12. EVENT DIALOG AND CRUD
+// 12. EVENT CRUD
 // ============================================================
 function openEventDialog(event = null, presetDate = null) {
   if (!CONFIG_READY || !state.db) {
@@ -880,12 +887,12 @@ function openEventDialog(event = null, presetDate = null) {
 
   if (event) {
     dom.eventDialogTitle.textContent = "Edit event";
-    dom.eventId.value         = event.id || "";
-    dom.eventTitle.value      = event.title || "";
-    dom.eventType.value       = event.type || "";
-    dom.eventDescription.value= event.description || "";
-    dom.eventLink.value       = event.resourceUrl || "";
-    dom.eventAssignee.value   = event.assigneeUid || "";
+    dom.eventId.value          = event.id || "";
+    dom.eventTitle.value       = event.title || "";
+    dom.eventType.value        = event.type || "";
+    dom.eventDescription.value = event.description || "";
+    dom.eventLink.value        = event.resourceUrl || "";
+    dom.eventAssignee.value    = event.assigneeUid || "";
 
     const start = tsToDate(event.startDate);
     if (start) {
@@ -909,7 +916,7 @@ function openEventDialog(event = null, presetDate = null) {
     dom.eventEndDate.value   = dateStr;
     dom.eventStartTime.value = "09:00";
     dom.eventEndTime.value   = "10:00";
-    dom.eventDelete.hidden = true;
+    dom.eventDelete.hidden   = true;
   }
 
   populateAssigneeOptions();
@@ -1015,7 +1022,7 @@ async function submitEventForm(e) {
       showToast("Event created.", "success");
     }
     closeEventDialog();
-    // Realtime listener refreshes calendar automatically.
+    // Realtime listener refreshes the calendar automatically.
   } catch (err) {
     console.error("Save event failed:", err?.code || err?.message);
     showToast(
@@ -1056,7 +1063,72 @@ async function deleteCurrentEvent() {
 
 
 // ============================================================
-// 13. CONTENT PRODUCTION PIPELINE
+// 13. PROJECT CRUD (PREPARED FOR FUTURE UI)
+// ============================================================
+// These functions are ready to be called from a future project UI.
+// The current HTML does not include project-creation or stage-change
+// controls, so they are exposed as module-scoped helpers only.
+// Firestore Security Rules must authorize these operations.
+
+async function createProject({
+  title, description, stage, assigneeUid, dueDate, resourceUrl, notes,
+}) {
+  if (!state.db) throw new Error("Firestore is not initialized.");
+  if (!PIPELINE_STAGES.includes(stage)) throw new Error("Invalid stage.");
+  if (!title || typeof title !== "string") throw new Error("Title is required.");
+
+  return addDoc(collection(state.db, "projects"), {
+    title,
+    description: description || "",
+    stage,
+    assigneeUid: assigneeUid || null,
+    dueDate: dueDate ? Timestamp.fromDate(dueDate) : null,
+    resourceUrl: resourceUrl || "",
+    notes: notes || "",
+    createdBy: state.currentUser?.uid || null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+async function updateProjectStage(projectId, newStage) {
+  if (!state.db) throw new Error("Firestore is not initialized.");
+  if (!PIPELINE_STAGES.includes(newStage)) throw new Error("Invalid stage.");
+  const project = state.projects.find((p) => p.id === projectId);
+  if (!project) throw new Error("Project not found.");
+  if (!PERMISSIONS.canUpdateProjectStage(state.currentUser, state.userProfile, project)) {
+    throw new Error("Not authorized to change this project stage.");
+  }
+  return updateDoc(doc(state.db, "projects", projectId), {
+    stage: newStage,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+async function updateProject(projectId, updates) {
+  if (!state.db) throw new Error("Firestore is not initialized.");
+  const allowed = ["title", "description", "assigneeUid", "resourceUrl", "notes"];
+  const filtered = {};
+  for (const key of allowed) {
+    if (updates[key] !== undefined) filtered[key] = updates[key];
+  }
+  if (updates.dueDate !== undefined) {
+    filtered.dueDate = updates.dueDate
+      ? Timestamp.fromDate(updates.dueDate)
+      : null;
+  }
+  filtered.updatedAt = serverTimestamp();
+  return updateDoc(doc(state.db, "projects", projectId), filtered);
+}
+
+async function deleteProject(projectId) {
+  if (!state.db) throw new Error("Firestore is not initialized.");
+  return deleteDoc(doc(state.db, "projects", projectId));
+}
+
+
+// ============================================================
+// 14. CONTENT PRODUCTION PIPELINE RENDERING
 // ============================================================
 const PIPELINE_STAGES = [
   "script-pending",
@@ -1167,9 +1239,7 @@ function buildProjectCard(project) {
         a.textContent = "Open resource";
         card.appendChild(a);
       }
-    } catch {
-      /* invalid URL — skip link */
-    }
+    } catch { /* invalid URL — skip link */ }
   }
 
   if (project.updatedAt) {
@@ -1187,7 +1257,7 @@ function buildProjectCard(project) {
 
 
 // ============================================================
-// 14. TEAM MEMBERS
+// 15. TEAM MEMBERS
 // ============================================================
 function renderTeam() {
   if (!dom.memberCards.length) return;
@@ -1211,12 +1281,12 @@ function renderTeam() {
     }
 
     const displayName = member.displayName || member.email || "Unnamed";
-    if (avatar) avatar.textContent = displayName.charAt(0).toUpperCase();
-    if (name)   name.textContent = displayName;
-    if (role)   role.textContent = member.role || "Member";
+    if (avatar)     avatar.textContent = displayName.charAt(0).toUpperCase();
+    if (name)       name.textContent = displayName;
+    if (role)       role.textContent = member.role || "Member";
     if (color && member.color) color.style.backgroundColor = member.color;
     if (colorLabel) colorLabel.textContent = member.color || "—";
-    if (avail) avail.textContent = computeMemberAvailability(member);
+    if (avail)      avail.textContent = computeMemberAvailability(member);
   });
 }
 
@@ -1236,7 +1306,7 @@ function computeMemberAvailability(member) {
 
 
 // ============================================================
-// 15. DASHBOARD
+// 16. DASHBOARD
 // ============================================================
 function renderDashboard() {
   const today = startOfDay(new Date());
@@ -1251,9 +1321,7 @@ function renderDashboard() {
 
   dom.dashTodayEvents.innerHTML = "";
   if (todayEvents.length === 0) {
-    dom.dashTodayEvents.appendChild(
-      makeEmpty("No events scheduled for today.")
-    );
+    dom.dashTodayEvents.appendChild(makeEmpty("No events scheduled for today."));
   } else {
     todayEvents.slice(0, 5).forEach((ev) => {
       dom.dashTodayEvents.appendChild(buildSimpleItem(ev.title || "(untitled)"));
@@ -1275,9 +1343,7 @@ function renderDashboard() {
     tests.forEach((t) => {
       const d = tsToDate(t.startDate);
       dom.dashUpcomingTests.appendChild(
-        buildSimpleItem(
-          `${t.title || "Class Test"} · ${d.toLocaleDateString()}`
-        )
+        buildSimpleItem(`${t.title || "Class Test"} · ${d.toLocaleDateString()}`)
       );
     });
   }
@@ -1320,9 +1386,7 @@ function renderDashboard() {
     dom.dashPendingTasks.appendChild(makeEmpty("No pending tasks."));
   } else {
     pending.slice(0, 5).forEach((t) => {
-      dom.dashPendingTasks.appendChild(
-        buildSimpleItem(t.title || "(untitled)")
-      );
+      dom.dashPendingTasks.appendChild(buildSimpleItem(t.title || "(untitled)"));
     });
   }
 
@@ -1345,7 +1409,7 @@ function buildSimpleItem(text) {
 
 
 // ============================================================
-// 16. ACTIVITY HISTORY
+// 17. ACTIVITY HISTORY
 // ============================================================
 function renderActivity() {
   dom.activityList.innerHTML = "";
@@ -1392,7 +1456,7 @@ function renderActivity() {
 
 
 // ============================================================
-// 17. NOTIFICATIONS (TOASTS)
+// 18. NOTIFICATIONS (TOASTS)
 // ============================================================
 function showToast(message, kind = "success") {
   const existing = document.getElementById("app-toast");
@@ -1418,16 +1482,18 @@ function showToast(message, kind = "success") {
 
 
 // ============================================================
-// 18. REAL-TIME SUBSCRIPTIONS
+// 19. REAL-TIME SUBSCRIPTIONS
 // ============================================================
 function attachRealtimeListeners() {
   if (!state.db) return;
 
-  // Events — no server ordering, so records without startDate still load.
+  // Events
   if (state.unsubs.events) state.unsubs.events();
+  showCalendarLoading();
   state.unsubs.events = onSnapshot(
     collection(state.db, "events"),
     (snap) => {
+      hideCalendarLoading();
       const events = [];
       snap.forEach((d) => events.push({ id: d.id, ...d.data() }));
       state.events = events;
@@ -1437,6 +1503,7 @@ function attachRealtimeListeners() {
       renderTeam();
     },
     (err) => {
+      hideCalendarLoading();
       console.error("Events listener failed:", err?.code || err?.message);
       showCalendarError("Unable to load events. " + (err?.code || ""));
       setDataStatus("Error loading events");
@@ -1511,7 +1578,7 @@ function detachRealtimeListeners() {
 
 
 // ============================================================
-// 19. AUTH STATE HANDLING
+// 20. AUTH STATE HANDLING
 // ============================================================
 let authEpoch = 0;
 
@@ -1537,10 +1604,15 @@ async function handleAuthStateChange(user) {
   if (epoch !== authEpoch) return;
 
   if (!profile) {
+    // Fail closed: signed in to Firebase, but no member profile.
+    // Sign out so the user can try another account or an admin
+    // can create their profile.
+    try { await signOut(state.auth); } catch { /* ignore */ }
+    if (epoch !== authEpoch) return; // signOut triggered a new cycle
     showAuthScreen();
     showLoginError(
-      "Your account exists but has no member profile in Firestore. " +
-      "Ask an administrator to create a document in the 'members' " +
+      "Signed in, but no member profile exists for this account. " +
+      "Ask a team administrator to create a document in the 'members' " +
       "collection with ID: " + user.uid
     );
     setDataStatus("Profile missing");
@@ -1557,7 +1629,7 @@ async function handleAuthStateChange(user) {
 
 
 // ============================================================
-// 20. SETUP / STATUS HELPERS
+// 21. SETUP / STATUS HELPERS
 // ============================================================
 function setDataStatus(text) {
   if (dom.dataStatus) dom.dataStatus.textContent = text;
@@ -1578,12 +1650,16 @@ function showSetupMessage() {
   const panel = dom.authScreen?.querySelector(".auth-screen__panel");
   if (!panel || panel.querySelector(".setup-notice")) return;
 
+  const missing = getMissingConfigKeys(firebaseConfig);
   const notice = document.createElement("div");
   notice.className = "setup-notice form-error";
   notice.setAttribute("role", "alert");
   notice.textContent =
-    "Firebase is not configured yet. Edit script.js to add your Firebase " +
-    "web config. Login and shared data are unavailable until this is complete.";
+    missing.length > 0
+      ? `Firebase configuration incomplete. Missing: ${missing.join(", ")}. ` +
+        `Edit script.js → firebaseConfig with the values from your Firebase Console ` +
+        `(Project Settings → General → Your apps).`
+      : `Firebase could not be initialized. Check the browser console for details.`;
 
   const form = panel.querySelector(".auth-form");
   if (form) panel.insertBefore(notice, form);
@@ -1594,10 +1670,10 @@ function showSetupMessage() {
 
 
 // ============================================================
-// 21. EVENT LISTENERS
+// 22. EVENT LISTENERS
 // ============================================================
 function attachListeners() {
-  // Auth form
+  // Auth
   if (dom.loginForm) dom.loginForm.addEventListener("submit", handleSignIn);
 
   if (dom.togglePassword) {
@@ -1687,7 +1763,7 @@ function attachListeners() {
 
 
 // ============================================================
-// 22. INITIALIZATION
+// 23. INITIALIZATION
 // ============================================================
 async function init() {
   attachListeners();
